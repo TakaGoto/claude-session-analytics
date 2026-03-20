@@ -8,6 +8,7 @@ import { projects } from '../src/commands/projects.js';
 import { trends } from '../src/commands/trends.js';
 import { sessions } from '../src/commands/sessions.js';
 import { tools } from '../src/commands/tools.js';
+import { breakdown } from '../src/commands/breakdown.js';
 
 const HELP = `
 claude-analytics — Understand and improve how you work with Claude Code
@@ -22,6 +23,7 @@ Commands:
   projects            Per-project health and friction breakdown
   trends              Track how your workflow is improving over time
   sessions            List individual sessions with stats
+  breakdown           Where your time goes (planning, implementing, fixing, etc)
   tools               Tool usage frequency and patterns
 
 Options:
@@ -68,7 +70,7 @@ const options = {
   json: flags.json || false,
 };
 
-const commands = { summary, friction, efficiency, projects, trends, sessions, tools };
+const commands = { summary, friction, efficiency, projects, trends, sessions, tools, breakdown };
 
 if (!commands[command]) {
   console.error(`Unknown command: ${command}\n`);
