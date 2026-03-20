@@ -4,14 +4,6 @@ import { homedir } from 'node:os';
 
 const CLAUDE_DIR = join(homedir(), '.claude');
 
-// Pricing per 1M tokens (as of March 2026)
-export const PRICING = {
-  'claude-opus-4-6': { input: 15, output: 75, cacheRead: 1.5, cacheCreate: 18.75 },
-  'claude-opus-4-5-20251101': { input: 15, output: 75, cacheRead: 1.5, cacheCreate: 18.75 },
-  'claude-sonnet-4-5-20250929': { input: 3, output: 15, cacheRead: 0.3, cacheCreate: 3.75 },
-  'claude-haiku-4-5-20251001': { input: 0.80, output: 4, cacheRead: 0.08, cacheCreate: 1 },
-};
-
 export function getClaudeDir() {
   if (!existsSync(CLAUDE_DIR)) {
     throw new Error(`Claude directory not found at ${CLAUDE_DIR}. Is Claude Code installed?`);
@@ -78,6 +70,20 @@ export function loadSessionsIndex() {
   return allSessions;
 }
 
+// Merge session-meta with facets by session_id
+export function loadEnrichedSessions() {
+  const metas = loadSessionMeta();
+  const facets = loadFacets();
+  const facetMap = {};
+  for (const f of facets) {
+    facetMap[f.session_id] = f;
+  }
+  return metas.map(m => ({
+    ...m,
+    facet: facetMap[m.session_id] || null,
+  }));
+}
+
 export function filterByDays(items, days, dateField = 'date') {
   if (!days) return items;
   const cutoff = new Date();
@@ -95,15 +101,20 @@ export function filterByProject(sessions, projectPath) {
   );
 }
 
-export function estimateCost(usage, model) {
-  const rates = PRICING[model] || PRICING['claude-opus-4-6'];
-  const m = 1_000_000;
-  return (
-    (usage.inputTokens || 0) / m * rates.input +
-    (usage.outputTokens || 0) / m * rates.output +
-    (usage.cacheReadInputTokens || 0) / m * rates.cacheRead +
-    (usage.cacheCreationInputTokens || 0) / m * rates.cacheCreate
-  );
+export function filterSessions(sessions, options) {
+  let filtered = sessions;
+  if (options.project) filtered = filterByProject(filtered, options.project);
+  if (options.days) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - options.days);
+    filtered = filtered.filter(s => new Date(s.start_time) >= cutoff);
+  }
+  return filtered;
+}
+
+export function getProjectName(projectPath) {
+  if (!projectPath) return 'unknown';
+  return projectPath.split('/').filter(Boolean).pop();
 }
 
 export function formatTokens(n) {
@@ -113,13 +124,19 @@ export function formatTokens(n) {
   return String(n);
 }
 
-export function formatCost(n) {
-  return `$${n.toFixed(2)}`;
-}
-
 export function formatDuration(minutes) {
   if (minutes < 60) return `${minutes}m`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+export function formatPercent(n, total) {
+  if (total === 0) return '0%';
+  return `${Math.round(n / total * 100)}%`;
+}
+
+export function bar(value, max, width = 20) {
+  const filled = max > 0 ? Math.round((value / max) * width) : 0;
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
 }

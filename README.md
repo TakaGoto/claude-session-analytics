@@ -1,13 +1,21 @@
 # claude-session-analytics
 
-CLI tool to analyze your Claude Code sessions. See where your tokens go, what tools get used, and how much it's costing you.
+CLI tool that helps you understand and improve how you work with Claude Code. Find out what's slowing you down, which projects need attention, and whether your workflow is getting better over time.
 
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Why
 
-Claude Code doesn't give you a clear picture of your usage. You hit rate limits and don't know why. You're burning tokens and don't know where. This tool reads your local session data and gives you answers.
+Claude Code's `/insights` gives you a nice report, but it doesn't answer the questions that actually matter:
+
+- Am I spending too many tokens on simple tasks?
+- Which projects have the most friction?
+- Is "buggy code" my biggest problem, or is it "wrong approach"?
+- Am I getting better at working with Claude over time?
+- Where am I wasting the most back-and-forth?
+
+This tool reads your local Claude Code session data and gives you actionable answers.
 
 ## Install
 
@@ -25,84 +33,119 @@ npx claude-session-analytics summary
 
 ### `summary`
 
-Overview of all usage: tokens, models, costs, top tools, busiest day.
-
-```bash
-claude-analytics summary
-```
+Your development scorecard: completion rate, friction points, efficiency, and bug fix ratio.
 
 ```
-  Sessions: 250 | Messages: 149,122 | Since: 1/4/2026
+$ claude-analytics summary
 
-  Tokens by model:
-    opus-4-6                 2.1M in      1.7M out      2.1B cache read  $5124.21
-    opus-4-5               623.5K in    390.3K out      2.0B cache read  $4471.94
-    sonnet-4-5                860 in     14.0K out      3.7M cache read     $2.16
+  Sessions: 188 | Messages: 15,191 | Time: 298h 22m
 
-  Estimated total cost: $9598.32
+  Completion:
+    Fully achieved:      10   20%
+    Mostly achieved:     27   54%
+    Partially:           13   26%
 
-  Top tools:
-    Bash                 2,571
-    Read                 1,989
-    Edit                 1,048
+  Efficiency:
+    Tokens used:           2.1M  (755.0K in / 1.3M out)
+    Lines of code:       57,613
+    Tokens per line:         36  (normal)
+
+  Top friction points:
+    buggy code                   25
+    wrong approach               17
+    user rejected action         9
+
+  Time split:
+    Bug fixes:           22   65%
+    New features:        12   35%
 ```
 
-### `costs`
+### `friction`
 
-Cost breakdown by model and time period.
+What's slowing you down, which projects are affected, and what to do about it.
 
-```bash
-claude-analytics costs
-claude-analytics costs --days 30
+```
+$ claude-analytics friction
+
+  buggy code
+    ███████████████  25 occurrences across 14 sessions
+    Projects: bandai-events, terror, punk_records
+
+  wrong approach
+    ██████████░░░░░  17 occurrences across 13 sessions
+    Projects: bandai-events, punk_records, terror
+
+  Suggestions:
+    - "buggy code" is your top friction. Consider adding test requirements
+      to CLAUDE.md or asking Claude to write tests before implementation.
+    - "wrong approach" is common. Try using /plan before complex tasks.
+```
+
+### `efficiency`
+
+Token efficiency: most and least efficient sessions, and where you're burning tokens.
+
+```
+$ claude-analytics efficiency
+
+  Overall: 2.0M tokens → 57,613 lines of code
+  Average: 34 tokens per line | 7.1 prompts per session
+
+  Most efficient sessions (lowest tokens per line):
+    52887a00      0 tok/line    211 lines  optcg-sim
+
+  Least efficient sessions (highest tokens per line):
+    a0d21fc2   4225 tok/line     44 lines  polymarket-bot
+
+  Most back-and-forth (many prompts to get the job done):
+    d1a959c5   55 prompts    676 lines  punk_records
+```
+
+### `projects`
+
+Per-project health: tokens, friction, bugs, and completion rates.
+
+```
+$ claude-analytics projects
+
+  punk_records
+    ███████████████  50 sessions | 101h | 535K tokens
+    Lines: 16,656 | Tok/line: 32 | Bugs: 2 | Friction: 19 | Completion: 33%
+
+  Watch list:
+    punk_records: 19 friction points — review CLAUDE.md or simplify tasks
+```
+
+### `trends`
+
+Weekly trends so you can see if things are getting better or worse.
+
+```
+$ claude-analytics trends
+
+  Week         Sessions    Lines  Tok/Line  Friction  Complete Activity
+  2026-02-22         17   11,367        28        28       18% ████░░░░░░
+  2026-03-01         17    8,355        38        18       14% ████░░░░░░
+
+  Trend analysis:
+    Friction is increasing (9.5 vs 7.7 avg/week). Check what's causing it.
+    Token efficiency is improving (27 vs 49 tokens/line).
 ```
 
 ### `sessions`
 
-List sessions sorted by token usage, duration, or message count.
-
-```bash
-claude-analytics sessions --sort tokens --limit 5
-claude-analytics sessions --sort duration --limit 10
-claude-analytics sessions --project my-project
-```
+List individual sessions. Sort by tokens, messages, duration, or friction.
 
 ```
-  a0d21fc2   185.9K tokens     28 msgs     10m  polymarket-bot  why isnt the bot watching the game
-  d35e5157    82.1K tokens    187 msgs  13h 53m  punk_records    User asked Claude to build a...
-  3a1be5b7    72.7K tokens     65 msgs      7m  cli             lets create something similar...
+$ claude-analytics sessions --sort friction --limit 5
 ```
 
 ### `tools`
 
-Tool usage frequency and patterns.
-
-```bash
-claude-analytics tools
-claude-analytics tools --days 14
-```
+Tool usage frequency and patterns across sessions.
 
 ```
-  Tool                      Total   Sessions  Avg/Session
-  ────────────────────── ──────── ────────── ────────────
-  Bash                      2,571        137           19
-  Read                      1,989        152           13
-  Edit                      1,048        105           10
-```
-
-### `daily`
-
-Daily activity with a visual chart.
-
-```bash
-claude-analytics daily
-claude-analytics daily --days 14
-```
-
-```
-  Date           Messages   Sessions   Tool Calls  Activity
-  2026-02-11       20,850         28        3,241  ████████████████████
-  2026-02-12       10,362         17        1,922  ██████████░░░░░░░░░░
-  2026-02-13        8,950         25        1,335  ████████░░░░░░░░░░░░
+$ claude-analytics tools
 ```
 
 ## Options
@@ -113,24 +156,19 @@ All commands support:
 |------|-------------|
 | `--days <n>` | Filter to last N days |
 | `--project <path>` | Filter to a specific project |
-| `--sort <field>` | Sort by: tokens, messages, duration (sessions only) |
+| `--sort <field>` | Sort by: tokens, messages, duration, friction |
 | `--limit <n>` | Number of results (default: 10) |
 | `--json` | Output as JSON |
-| `--help` | Show help |
 
 ## How it works
 
 Claude Code stores session data locally in `~/.claude/`. This tool reads:
 
-- **stats-cache.json**: aggregated daily activity and model token usage
-- **usage-data/session-meta/**: per-session stats (duration, tools, tokens, files changed)
-- **usage-data/facets/**: AI-generated session summaries and outcomes
+- **usage-data/session-meta/**: per-session stats (duration, tools, tokens, lines changed, errors)
+- **usage-data/facets/**: AI-generated session analysis (outcomes, friction types, goals)
+- **stats-cache.json**: aggregated daily activity and model usage
 
 No data leaves your machine. Everything is read-only and local.
-
-## Cost estimates
-
-Cost calculations use published Claude API pricing. These are estimates based on your local token counts. Actual billing may differ depending on your plan (Pro, Max, Team, Enterprise).
 
 ## Requirements
 

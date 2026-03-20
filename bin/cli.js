@@ -2,38 +2,42 @@
 
 import { parseArgs } from 'node:util';
 import { summary } from '../src/commands/summary.js';
-import { costs } from '../src/commands/costs.js';
+import { friction } from '../src/commands/friction.js';
+import { efficiency } from '../src/commands/efficiency.js';
+import { projects } from '../src/commands/projects.js';
+import { trends } from '../src/commands/trends.js';
 import { sessions } from '../src/commands/sessions.js';
 import { tools } from '../src/commands/tools.js';
-import { daily } from '../src/commands/daily.js';
 
 const HELP = `
-claude-analytics — Analyze your Claude Code sessions
+claude-analytics — Understand and improve how you work with Claude Code
 
 Usage:
   claude-analytics <command> [options]
 
 Commands:
-  summary             Overview of all usage (tokens, sessions, models)
-  costs               Estimated cost breakdown by model and time period
-  sessions            List sessions sorted by tokens, duration, or messages
+  summary             Your development scorecard (completion rate, friction, efficiency)
+  friction            What's slowing you down (bugs, wrong approaches, rejections)
+  efficiency          Token efficiency — how much output per token spent
+  projects            Per-project health and friction breakdown
+  trends              Track how your workflow is improving over time
+  sessions            List individual sessions with stats
   tools               Tool usage frequency and patterns
-  daily               Daily activity breakdown
 
 Options:
   --days <n>          Filter to last N days (default: all)
   --project <path>    Filter to a specific project path
-  --sort <field>      Sort by: tokens, messages, duration (sessions command)
+  --sort <field>      Sort by: tokens, messages, duration, friction (sessions command)
   --limit <n>         Number of results to show (default: 10)
   --json              Output as JSON
   --help              Show this help message
 
 Examples:
   claude-analytics summary
-  claude-analytics costs --days 30
-  claude-analytics sessions --sort tokens --limit 5
-  claude-analytics tools --project /Users/me/my-project
-  claude-analytics daily --days 14
+  claude-analytics friction --days 30
+  claude-analytics efficiency --project my-app
+  claude-analytics projects
+  claude-analytics trends --days 60
 `;
 
 const command = process.argv[2];
@@ -64,7 +68,7 @@ const options = {
   json: flags.json || false,
 };
 
-const commands = { summary, costs, sessions, tools, daily };
+const commands = { summary, friction, efficiency, projects, trends, sessions, tools };
 
 if (!commands[command]) {
   console.error(`Unknown command: ${command}\n`);
