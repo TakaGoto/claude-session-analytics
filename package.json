@@ -1,0 +1,29 @@
+{
+  "name": "claude-session-analytics",
+  "version": "0.1.0",
+  "description": "CLI tool to analyze your Claude Code sessions — token usage, costs, tool patterns, and trends",
+  "bin": {
+    "claude-analytics": "./bin/cli.js"
+  },
+  "main": "src/index.js",
+  "type": "module",
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "analytics",
+    "tokens",
+    "usage",
+    "cli"
+  ],
+  "author": "Taka Goto",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TakaGoto/claude-session-analytics.git"
+  },
+  "homepage": "https://github.com/TakaGoto/claude-session-analytics#readme"
+}
