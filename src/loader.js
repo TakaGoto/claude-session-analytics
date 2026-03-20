@@ -70,18 +70,125 @@ export function loadSessionsIndex() {
   return allSessions;
 }
 
-// Merge session-meta with facets by session_id
+// Build session stats from raw JSONL files for sessions missing from session-meta
+export function loadSessionsFromJsonl() {
+  const projectsDir = join(getClaudeDir(), 'projects');
+  if (!existsSync(projectsDir)) return [];
+
+  const sessions = [];
+  for (const project of readdirSync(projectsDir)) {
+    const projectDir = join(projectsDir, project);
+    try {
+      const files = readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
+      for (const file of files) {
+        const sessionId = file.replace('.jsonl', '');
+        const filePath = join(projectDir, file);
+
+        try {
+          const content = readFileSync(filePath, 'utf8');
+          const lines = content.trim().split('\n');
+          if (lines.length === 0) continue;
+
+          let firstTimestamp = null;
+          let lastTimestamp = null;
+          let inputTokens = 0;
+          let outputTokens = 0;
+          let userMessages = 0;
+          let assistantMessages = 0;
+          let toolCounts = {};
+          let projectPath = null;
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              const ts = data.timestamp;
+              if (ts && !firstTimestamp) firstTimestamp = ts;
+              if (ts) lastTimestamp = ts;
+
+              if (data.type === 'user' && !data.isMeta) {
+                userMessages++;
+                if (data.cwd) projectPath = data.cwd;
+              }
+
+              if (data.type === 'assistant') {
+                assistantMessages++;
+                const usage = data.message?.usage || {};
+                inputTokens += usage.input_tokens || 0;
+                outputTokens += usage.output_tokens || 0;
+
+                for (const block of data.message?.content || []) {
+                  if (block?.type === 'tool_use') {
+                    const name = block.name || 'unknown';
+                    toolCounts[name] = (toolCounts[name] || 0) + 1;
+                  }
+                }
+              }
+            } catch {
+              // skip bad lines
+            }
+          }
+
+          if (!firstTimestamp) continue;
+
+          const start = new Date(firstTimestamp);
+          const end = new Date(lastTimestamp);
+          const durationMinutes = Math.round((end - start) / 60000);
+
+          sessions.push({
+            session_id: sessionId,
+            project_path: projectPath || project.replace(/-/g, '/').replace(/^\//, ''),
+            start_time: firstTimestamp,
+            duration_minutes: durationMinutes,
+            user_message_count: userMessages,
+            assistant_message_count: assistantMessages,
+            tool_counts: toolCounts,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            _source: 'jsonl',
+          });
+        } catch {
+          // skip unreadable files
+        }
+      }
+    } catch {
+      // skip unreadable directories
+    }
+  }
+
+  return sessions;
+}
+
+// Merge session-meta with facets, and fill in gaps from JSONL
 export function loadEnrichedSessions() {
   const metas = loadSessionMeta();
   const facets = loadFacets();
+  const jsonlSessions = loadSessionsFromJsonl();
+
   const facetMap = {};
   for (const f of facets) {
     facetMap[f.session_id] = f;
   }
-  return metas.map(m => ({
+
+  // Index meta sessions by ID
+  const metaIds = new Set(metas.map(m => m.session_id));
+
+  // Start with session-meta (richer data)
+  const enriched = metas.map(m => ({
     ...m,
     facet: facetMap[m.session_id] || null,
   }));
+
+  // Add JSONL sessions that aren't in session-meta
+  for (const s of jsonlSessions) {
+    if (!metaIds.has(s.session_id)) {
+      enriched.push({
+        ...s,
+        facet: facetMap[s.session_id] || null,
+      });
+    }
+  }
+
+  return enriched;
 }
 
 export function filterByDays(items, days, dateField = 'date') {
